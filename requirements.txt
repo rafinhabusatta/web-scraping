@@ -1,0 +1,4 @@
+pandas
+requests
+beautifulsoup4
+openpyxl  # necessário para ler arquivos .xlsx com o pandas

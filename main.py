@@ -1,53 +1,33 @@
-import requests
-from bs4 import BeautifulSoup
+from sheet import get_movie_names_from_excel
+from search import search_imdb
+from extraction import save_to_excel
 
-def search_trakt(movie_name):
-    # URL de busca no Trakt
-    base_url = "https://www.imdb.com/find"
-    params = {"q": movie_name,"s": "all"}
+def main(excel_file_path):
+    # Obter os filmes da planilha exportada
+    movie_names = get_movie_names_from_excel(excel_file_path)
+    results = []
 
-    # Fazer a requisição
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-    }
+    user_input = input("Digite o número máximo de resultados por busca (digite -1 ou pressione enter para salvar todos): ")
+    if user_input == "":
+        max_results = -1
+    else:
+        # Tentar converter o valor digitado para um número inteiro
+        try:
+            max_results = int(user_input)
+        except ValueError:
+            # Caso não seja um número válido, podemos definir o valor padrão
+            print("Valor inválido, todos os resultados serão salvos para cada busca")
+            max_results = -1
 
-    response = requests.get(base_url, headers=headers, params=params)
-    if response.status_code != 200:
-        print(f"Erro ao acessar o Trakt. Código HTTP: {response.status_code}")
-        return
+    # Para cada filme, realizar a pesquisa no IMDb
+    for movie_name in movie_names:
+        print(f"Pesquisando: {movie_name}")
+        search_results = search_imdb(movie_name, max_results)
+        results.extend(search_results)
 
-    # Parsear o conteúdo HTML
-    soup = BeautifulSoup(response.content, "html.parser")
+    # Salvar os resultados em um arquivo Excel
+    save_to_excel(results, "movies.xlsx")
 
-    # Procurar os resultados
-    results = soup.find_all("li", class_="ipc-metadata-list-summary-item ipc-metadata-list-summary-item--click find-result-item find-title-result")
-    
-    # Verificar se há resultados
-    if not results:
-        print("Nenhum resultado encontrado ou o layout do site mudou.")
-        return
-
-    # Processar os resultados
-    for result in results[:5]:  # Exibir apenas os primeiros 5
-        # Encontrar o título
-        title_element = result.find("a", class_="ipc-metadata-list-summary-item__t")
-        title = title_element.text.strip() if title_element else "Título não encontrado"
-
-        # Encontrar o ano
-        year_element = result.find("span", class_="ipc-metadata-list-summary-item__li")
-        year = year_element.text.strip() if year_element else "Ano desconhecido"
-
-        # Encontrar o link
-        link = (
-            "https://www.imdb.com" + title_element["href"]
-            if title_element and title_element.get("href")
-            else "Link indisponível"
-        )
-
-        # Exibir o resultado
-        print(f"Filme: {title} ({year})")
-        print(f"Link: {link}")
-        print("-" * 30)
-
-# Testar a função
-search_trakt("Inception")
+if __name__ == "__main__":
+    excel_file_path = "movie_list.xlsx"  # Altere para o caminho do seu arquivo
+    main(excel_file_path)
